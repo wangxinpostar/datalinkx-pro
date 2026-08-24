@@ -41,7 +41,6 @@ import java.util.stream.Collectors;
 import static com.datalinkx.common.utils.IdUtils.genKey;
 import static com.datalinkx.dataserver.monitor.DbConnectionMonitor.DB_CONNECTION_STATUS;
 
-
 @Service
 @Log4j2
 public class DsServiceImpl implements DsService {
@@ -65,13 +64,12 @@ public class DsServiceImpl implements DsService {
 		SETUP_INFO_GENERATORS.put(MetaConstants.DsType.KAFKA, new KafkaSetupInfoGenerator());
 	}
 
-
 	/**
-	* @Description //数据源创建
-	* @Date 2021/1/12 6:13 下午
-	* @param form
-	* @return String dsId
-	**/
+	 * @Description //数据源创建
+	 * @Date 2021/1/12 6:13 下午
+	 * @param form
+	 * @return String dsId
+	 **/
 	@Transactional(rollbackFor = Exception.class)
 	@SneakyThrows
 	public String create(DsForm.DsCreateForm form) {
@@ -115,7 +113,8 @@ public class DsServiceImpl implements DsService {
 	@Override
 	public String test(String dsId) {
 		redisCache.deleteObject(DB_CONNECTION_STATUS + dsId);
-		DsBean dsBean = dsRepository.findByDsId(dsId).orElseThrow(() -> new DatalinkXServerException(StatusCode.DS_NOT_EXISTS, "数据源不存在"));
+		DsBean dsBean = dsRepository.findByDsId(dsId)
+				.orElseThrow(() -> new DatalinkXServerException(StatusCode.DS_NOT_EXISTS, "数据源不存在"));
 		// 2.2、检查config字符串是否合法
 		this.checkConfigFormat(dsBean);
 		// 2.3、检查连接情况
@@ -152,7 +151,6 @@ public class DsServiceImpl implements DsService {
 		}
 	}
 
-
 	public void checkConnect(DsBean dsBean) {
 		try {
 			IDsDriver ignored = DsDriverFactory.getDriver(getConnectId(dsBean));
@@ -176,32 +174,54 @@ public class DsServiceImpl implements DsService {
 		}
 	}
 
-    public PageVo<List<DsVo>> dsPage(DsForm.DataSourcePageForm dataSourcePageForm) {
-		PageRequest pageRequest = PageRequest.of(dataSourcePageForm.getPageNo() - 1, dataSourcePageForm.getPageSize());
-		Page<DsBean> dsBeans = dsRepository.pageQuery(pageRequest, dataSourcePageForm.getName(), dataSourcePageForm.getType());
+	public PageVo<List<DsVo>> dsPage(DsForm.DataSourcePageForm dataSourcePageForm) {
+
+		PageRequest pageRequest = PageRequest.of(
+				dataSourcePageForm.getPageNo() - 1,
+				dataSourcePageForm.getPageSize());
+
+		Page<DsBean> dsBeans = dsRepository.pageQuery(
+				pageRequest,
+				dataSourcePageForm.getName(),
+				dataSourcePageForm.getType());
+
 		PageVo<List<DsVo>> result = new PageVo<>();
 		result.setPageNo(dataSourcePageForm.getPageNo());
 		result.setPageSize(dataSourcePageForm.getPageSize());
+
 		List<DsVo> dataList = new ArrayList<>();
+
 		dsBeans.getContent().forEach(dsBean -> {
+
+			// 密码存在时进行解密
 			if (!ObjectUtils.isEmpty(dsBean.getPassword())) {
-				String pwd = null;
 				try {
-					pwd = new String(Base64Utils.decodeBase64(dsBean.getPassword()));
-				} catch (UnsupportedEncodingException e) {
-					log.error("ds密码解析失败");
+					String pwd = new String(
+							Base64Utils.decodeBase64(dsBean.getPassword()),
+							StandardCharsets.UTF_8);
+					dsBean.setPassword(pwd);
+				} catch (Exception e) {
+					log.error("ds密码解析失败", e);
 				}
-				dsBean.setPassword(pwd);
-				DsVo dsVo = new DsVo();
-				BeanUtils.copyProperties(dsBean, dsVo);
-				String status = redisCache.getCacheObject(DB_CONNECTION_STATUS + dsBean.getDsId());
-				dsVo.setStatus(status ==  null ? 0 : status.equals("SUCCESS") ? 1 : 2);
-				dataList.add(dsVo);
 			}
+
+			// 无论有没有密码，都需要转换成 VO
+			DsVo dsVo = new DsVo();
+			BeanUtils.copyProperties(dsBean, dsVo);
+
+			// 获取数据源连接状态
+			String status = redisCache.getCacheObject(DB_CONNECTION_STATUS + dsBean.getDsId());
+
+			dsVo.setStatus(status == null ? 0 : "SUCCESS".equals(status) ? 1 : 2);
+
+			// 无论有没有密码，都加入返回结果
+			dataList.add(dsVo);
 		});
+
 		result.setData(dataList);
 		result.setTotalPage(dsBeans.getTotalPages());
 		result.setTotal(dsBeans.getTotalElements());
+
 		return result;
 	}
 
@@ -235,7 +255,8 @@ public class DsServiceImpl implements DsService {
 
 	public void modify(DsForm.DsCreateForm form) {
 		Optional<DsBean> dsCheck = dsRepository.findByDsId(form.getDsId());
-		DsBean dsBean = dsCheck.orElseThrow(() -> new DatalinkXServerException(StatusCode.DS_NOT_EXISTS, "ds not exist"));
+		DsBean dsBean = dsCheck
+				.orElseThrow(() -> new DatalinkXServerException(StatusCode.DS_NOT_EXISTS, "ds not exist"));
 		if (MetaConstants.DsType.ORACLE.equals(form.getType())) {
 			dsBean.setSchema(form.getDatabase());
 		}
@@ -250,7 +271,8 @@ public class DsServiceImpl implements DsService {
 
 	@SneakyThrows
 	public List<String> fetchTables(String dsId) {
-		DsBean dsBean = dsRepository.findByDsId(dsId).orElseThrow(() -> new DatalinkXServerException(StatusCode.DS_NOT_EXISTS));
+		DsBean dsBean = dsRepository.findByDsId(dsId)
+				.orElseThrow(() -> new DatalinkXServerException(StatusCode.DS_NOT_EXISTS));
 		List<String> tableList = new ArrayList<>();
 		try {
 			IDsDriver dsDriver = DsDriverFactory.getDriver(getConnectId(dsBean));
@@ -271,9 +293,9 @@ public class DsServiceImpl implements DsService {
 				.sorted(Comparator.comparing(DsBean::getType)).collect(Collectors.toList());
 	}
 
-
 	public List<DbTableField> fetchFields(String dsId, String tbName) {
-		DsBean dsBean = dsRepository.findByDsId(dsId).orElseThrow(() -> new DatalinkXServerException(StatusCode.DS_NOT_EXISTS));
+		DsBean dsBean = dsRepository.findByDsId(dsId)
+				.orElseThrow(() -> new DatalinkXServerException(StatusCode.DS_NOT_EXISTS));
 		try {
 			IDsDriver dsDriver = DsDriverFactory.getDriver(getConnectId(dsBean));
 			if (dsDriver instanceof IDsReader) {
@@ -288,8 +310,10 @@ public class DsServiceImpl implements DsService {
 	}
 
 	@Override
-	public List<Map<String, Object>> getTableData(String dsId, String tableName,Integer dataLength) throws UnsupportedEncodingException {
-		DsBean dsBean = dsRepository.findByDsId(dsId).orElseThrow(() -> new DatalinkXServerException(StatusCode.DS_NOT_EXISTS));
+	public List<Map<String, Object>> getTableData(String dsId, String tableName, Integer dataLength)
+			throws UnsupportedEncodingException {
+		DsBean dsBean = dsRepository.findByDsId(dsId)
+				.orElseThrow(() -> new DatalinkXServerException(StatusCode.DS_NOT_EXISTS));
 		DriverManagerDataSource dataSource = new DriverManagerDataSource();
 		dataSource.setDriverClassName("com.mysql.jdbc.Driver");
 		dataSource.setUrl("jdbc:mysql://" + dsBean.getHost() + ":" + dsBean.getPort() + "/" + dsBean.getDatabase());
