@@ -4,7 +4,7 @@ Security+JWT实现细粒度权限控制，集成DeepSeek大模型支持流式对
 
 ## DataLinkX-P Stars
 
-[![Star History Chart](https://api.star-history.com/svg?repos=wangxinpo777/DataLinkX-P&type=Date)](https://www.star-history.com/#wangxinpo777/DataLinkX-P&Date)
+[![Star History Chart](https://api.star-history.com/chart?repos=wangxinpo777/DataLinkX-P&type=date&legend=top-left&sealed_token=7NJnZ6uJ8abQmzeOqGxNYbyPZvvH2CuXvF3LuWCkRQN5RWmwfg9KwS7FibhLw1haj5lzC86icdNAI6FxSzGA1VeFLEw_TCjJ1Yq9hWcNxba-sxjOFWw6Bg)](https://www.star-history.com/?repos=wangxinpo777%2FDataLinkX-P&type=date&legend=top-left)
 
 ## 扩展点
 
